@@ -1,6 +1,7 @@
 name: GIS build and tests
 on:
   push:
+    branches: [main]
   pull_request:
 permissions:
   contents: read
@@ -10,6 +11,8 @@ jobs:
     timeout-minutes: 20
     env:
       QT_QPA_PLATFORM: offscreen
+      PROJ_DATA: /usr/share/proj
+      GDAL_DATA: /usr/share/gdal
     steps:
       - uses: actions/checkout@v4
       - name: Install QGIS and Python
@@ -20,6 +23,20 @@ jobs:
           .venv/bin/pip install -r requirements.txt
       - name: Build registry exports
         run: PYTHONPATH=src .venv/bin/python -m municipal_gis.pipeline
+      - name: Diagnose native map readers
+        run: |
+          .venv/bin/python - <<'PYCODE'
+          from qgis.core import QgsApplication,QgsVectorLayer
+          from osgeo import gdal
+          from pathlib import Path
+          app=QgsApplication([],False);app.initQgis()
+          print("GDAL",gdal.VersionInfo(),"file",Path("outputs/assets.gpkg").stat().st_size)
+          layers=[]
+          for name in ["assets"]*6+["roads"]:
+              layer=QgsVectorLayer(str(Path("outputs/assets.gpkg").resolve())+"|layername="+name,name,"ogr")
+              layers.append(layer)
+              print(name,"valid",layer.isValid(),"count",layer.featureCount(),"crs",layer.crs().authid(),"extent",layer.extent().toString())
+          PYCODE
       - name: Build QGIS project and printed map
         run: PYTHONPATH=src .venv/bin/python -m municipal_gis.qgis_project
       - name: Test calculations, exports and project portability
