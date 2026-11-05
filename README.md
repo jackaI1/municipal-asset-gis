@@ -62,4 +62,4 @@ The pipes, condition ratings, installation years, costs and offsets are all synt
 
 ## Checks
 
-The test suite covers cleaning, scoring, costs, scheduling, spatial joins, export reconciliation, the native Excel PivotTable cache and QGIS project portability. Plain Python runs 36 tests and skips the QGIS test when its bindings are absent. GitHub Actions installs QGIS and runs all 37 tests, including moving the project folder and reopening every layer. It also builds the PDF and map image from the saved print layout.
+The test suite covers cleaning, scoring, costs, scheduling, spatial joins, export reconciliation, the native Excel PivotTable cache and QGIS project portability. Plain Python runs 36 tests and skips the QGIS test when its bindings are absent. GitHub Actions installs QGIS and runs all 37 tests, including moving the project folder, reading every layer and checking visible pipe colours in the exported map. It also builds the PDF and map image from the saved print layout.
