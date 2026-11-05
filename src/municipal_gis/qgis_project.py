@@ -2,10 +2,14 @@
 
 import argparse
 import json
+import math
 import os
 from pathlib import Path
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+# A standalone, shareable GeoPackage must not depend on WAL sidecar files.
+# QGIS otherwise mixes pooled NOLOCK readers with WAL-capable connections.
+os.environ["OGR_SQLITE_JOURNAL"] = "DELETE"
 from qgis.PyQt.QtGui import QColor, QFont
 from qgis.core import (
     Qgis,
@@ -26,7 +30,6 @@ from qgis.core import (
     QgsLayoutPoint,
     QgsLayoutSize,
     QgsLayoutExporter,
-    QgsLayerTreeLayer,
     QgsLayoutItemPage,
     QgsReferencedRectangle,
 )
@@ -53,7 +56,8 @@ def create_project(output):
             )
             if not layer.isValid():
                 raise RuntimeError("Cannot load asset layer")
-            layer.setSubsetString(f"\"system\" = '{system}'")
+            if not layer.setSubsetString(f"\"system\" = '{system}'"):
+                raise RuntimeError(f"Cannot filter {system} assets")
             if view == "condition":
                 categories = [
                     QgsRendererCategory(
@@ -100,8 +104,12 @@ def create_project(output):
     roads = QgsVectorLayer(
         f"{package}|layername=roads", "Public roads | City of Waterloo", "ogr"
     )
-    if not roads.isValid():
-        raise RuntimeError("Cannot load roads")
+    if (
+        not roads.isValid()
+        or roads.featureCount() <= 0
+        or roads.crs().authid() != "EPSG:26917"
+    ):
+        raise RuntimeError("Cannot read projected road features")
     roads.renderer().setSymbol(
         QgsLineSymbol.createSimple({"line_color": "#BFC8CE", "line_width": "0.25"})
     )
@@ -112,6 +120,16 @@ def create_project(output):
         condition_layers + [roads] + [n.layer() for n in age_group.findLayers()]
     )
     extent = roads.extent()
+    if extent.isEmpty() or not all(
+        math.isfinite(v)
+        for v in [
+            extent.xMinimum(),
+            extent.xMaximum(),
+            extent.yMinimum(),
+            extent.yMaximum(),
+        ]
+    ):
+        raise RuntimeError("Road extent is empty or non-finite")
     extent.scale(1.08)
     project.viewSettings().setDefaultViewExtent(
         QgsReferencedRectangle(extent, project.crs())
