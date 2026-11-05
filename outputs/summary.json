@@ -1,0 +1,11 @@
+{
+  "assets": 1146,
+  "roads": 382,
+  "base_year": 2026,
+  "replacement_cost_cad": 453141122.6,
+  "lifecycle_cost_cad": 821229205.62,
+  "due_now": 548,
+  "length_km": 173.3,
+  "crs": "EPSG:26917",
+  "synthetic": true
+}
